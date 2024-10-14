@@ -7,5 +7,10 @@ use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    //
+    public function all() {
+    }
+
+    public function create() {
+
+    }
 }
