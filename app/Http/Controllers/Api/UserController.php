@@ -20,11 +20,9 @@ class UserController extends Controller
             ]);
 
             if ($validate->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'validation error',
-                    'errors' => $validate->errors()
-                ], 401);
+                return redirect()->route('auth.register')
+                    ->withErrors($validate)
+                    ->withInput();
             }
 
             $user = User::create([
@@ -33,17 +31,13 @@ class UserController extends Controller
                 'password' => Hash::make($request->password)
             ]);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'User created successfully',
-                'token' => $user->createToken('API TOKEN')->plainTextToken
-            ], 200);
+            return redirect()->route('auth.login')
+                ->with('status', 'User created successfully')
+                ->with('token', $user->createToken('API TOKEN')->plainTextToken);
 
         } catch (\Throwable $throw) {
-            return response()->json([
-                'status' => false,
-                'message' => $throw->getMessage()
-            ], 500);
+            return redirect()->route('auth.register')
+                ->with('error', $throw->getMessage());
         }
     }
 
@@ -55,33 +49,38 @@ class UserController extends Controller
             ]);
 
             if ($validate->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'validation error',
-                    'errors' => $validate->errors()
-                ], 401);
+                return redirect()->route('auth.login')
+                    ->withErrors($validate)
+                    ->withInput();
             }
 
-            if (!Auth::attempt($request->only(['email', 'password']))) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Email and password does not match'
-                ], 401);
+            if (Auth::attempt($request->only(['email', 'password']))) {
+                $user = Auth::user();
+
+                // Almacenar el ID del usuario en el session storage
+                session(['user_id' => $user->id]);
+
+                // Verifica si la sesión se almacena correctamente
+                if (session()->has('user_id')) {
+                    return redirect('/')->with('status', 'User logged in successfully');
+                } else {
+                    return redirect()->route('auth.login')->with('error', 'Failed to store user ID in session.');
+                }
+            } else {
+                return redirect()->route('auth.login')
+                    ->with('error', 'Email and password do not match')
+                    ->withInput();
             }
-
-            $user = User::where('email', $request->email)->first();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'User logged in successfully',
-                'token' => $user->createToken("API TOKEN")->plainTextToken
-            ], 200);
-
         } catch (\Throwable $throw) {
-            return response()->json([
-                'status' => false,
-                'message' => $throw->getMessage()
-            ], 500);
+            return redirect()->route('auth.login')
+                ->with('error', $throw->getMessage());
         }
+    }
+
+
+    public function logout(Request $request) {
+        $request->user()->currentAccessToken()->delete();
+
+        return redirect('/')->with('status', 'User logged out successfully');
     }
 }

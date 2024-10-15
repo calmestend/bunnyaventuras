@@ -52,12 +52,18 @@ class PostController extends Controller
                 ], 401);
             }
 
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('photos', 'public');
+            } else {
+                $photoPath = null;
+            }
+
             Post::create([
-                'user_id' => $request->user_id,
-                'category_id' => $request->category_id,
+                'user_id' => 1,
+                'category_id' => 1,
                 'title' => $request->title,
                 'body' => $request->body,
-                'photo' => $request->photo
+                'photo' => $photoPath
             ]);
 
             return response()->json([
